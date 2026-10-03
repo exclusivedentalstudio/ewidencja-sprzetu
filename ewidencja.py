@@ -149,7 +149,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Połączenie z Supabase
+# Połączenie z Supabase (zdefiniowane na samym początku)
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
     raw_key = st.secrets["SUPABASE_KEY"]
@@ -407,7 +407,7 @@ else:
             st.markdown("<hr style='border-color: #222; margin-top: 25px;'>", unsafe_allow_html=True)
             st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>📋 Wybierz sprzęt z listy, aby go edytować, usunąć lub przejrzeć historię</h4>", unsafe_allow_html=True)
             
-            # Słownik do wyboru konkretnego urządzenia (dodano ID, aby odróżnić duplikaty)
+            # Słownik do wyboru konkretnego urządzenia
             item_map = {f"{i['nazwa']} | SN: {i.get('numer_seryjny', 'Brak')} | ID: {i['id']}": i for i in items}
             selected_item_label = st.selectbox("Wybierz urządzenie do podglądu / edycji:", ["-- Wybierz urządzenie --"] + list(item_map.keys()))
             
@@ -479,9 +479,7 @@ else:
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("🗑️ Usuń ten sprzęt", key=f"del_{dev_id}"):
                         try:
-                            # Usuwamy najpierw historię serwisu przypisaną do tego urządzenia, aby uniknąć błędów spójności
                             supabase.table("serwis").delete().eq("sprzet_id", dev_id).execute()
-                            # Usuwamy sam sprzęt
                             supabase.table("sprzet").delete().eq("id", dev_id).execute()
                             st.success("Sprzęt usunięty z bazy danych.")
                             st.rerun()

@@ -10,12 +10,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Wstrzyknięcie stylów CSS (ciemny motyw, złote akcenty, poprawiony expander i kalendarz)
+# Wstrzyknięcie stylów CSS (w tym pełne nadpisanie kalendarza Streamlit)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
-    /* Ukrycie domyślnego nagłówka i stopki Streamlit */
     header[data-testid="stHeader"] {
         background-color: #000000 !important;
         display: none;
@@ -24,20 +23,17 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* Główne tło i czcionka */
     html, body, [class*="css"], .stApp {
         font-family: 'Outfit', sans-serif !important;
         background-color: #000000 !important;
         color: #ffffff;
     }
 
-    /* SideBar - lewy panel */
     [data-testid="stSidebar"] {
         background-color: #050505 !important;
         border-right: 1px solid #1a1a1a;
     }
 
-    /* Zakładki logowania w panelu bocznym */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: transparent;
@@ -55,7 +51,6 @@ st.markdown("""
         border-bottom: 2px solid #c5a880 !important;
     }
 
-    /* Złote nagłówki */
     .brand-title {
         font-family: 'Outfit', sans-serif !important;
         font-weight: 300 !important;
@@ -78,7 +73,6 @@ st.markdown("""
         margin-bottom: 25px;
     }
 
-    /* Karta powiadomień */
     .luxury-card {
         background-color: #0d0d0d;
         border: 1px solid #1f1f1f;
@@ -94,7 +88,6 @@ st.markdown("""
         font-size: 1rem;
     }
 
-    /* Poprawka dla Expander (Paska dodawania sprzętu) */
     .stExpander {
         background-color: #0d0d0d !important;
         border: 1px solid #222222 !important;
@@ -119,12 +112,10 @@ st.markdown("""
         padding: 20px !important;
     }
 
-    /* Etykiety pól formularza */
     label, div[data-testid="stMarkdownContainer"] p {
         color: #cccccc !important;
     }
 
-    /* Pola wprowadzania danych */
     div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
         font-family: 'Outfit', sans-serif !important;
         background-color: #141414 !important;
@@ -136,25 +127,36 @@ st.markdown("""
         border-color: #c5a880 !important;
     }
 
-    /* Poprawka kalendarza */
-    div[data-baseweb="calendar"], div[role="dialog"] {
-        background-color: #1a1a1a !important;
+    /* SILNE STYLE DLA KALENDARZA I POPUPÓW */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="dialog"] {
+        background-color: #121212 !important;
         color: #ffffff !important;
         border: 1px solid #333333 !important;
+    }
+    div[data-baseweb="calendar"] {
+        background-color: #121212 !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="calendar"] header, div[data-baseweb="calendar"] div {
+        background-color: #121212 !important;
+        color: #ffffff !important;
     }
     div[data-baseweb="calendar"] button {
         color: #ffffff !important;
         background-color: transparent !important;
+        border-radius: 4px !important;
     }
     div[data-baseweb="calendar"] button:hover {
         background-color: #c5a880 !important;
         color: #000000 !important;
     }
-    div[data-baseweb="popover"] {
-        background-color: #1a1a1a !important;
+    /* Wybrany dzień w kalendarzu */
+    div[data-baseweb="calendar"] [aria-selected="true"] {
+        background-color: #c5a880 !important;
+        color: #000000 !important;
+        font-weight: bold !important;
     }
 
-    /* Eleganckie przyciski */
     .stButton>button {
         font-family: 'Outfit', sans-serif !important;
         background: #c5a880 !important;
@@ -186,10 +188,8 @@ except Exception as e:
     st.error(f"Błąd konfiguracji Supabase: {e}")
     st.stop()
 
-# Lista administratorów
 ADMIN_EMAILS = ["exclusivedentalstudio@gmail.com"]
 
-# Stan sesji
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
@@ -268,7 +268,6 @@ if st.session_state["user"] is None:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Pobieranie danych z bazy w celu zapamiętania/podpowiadania nazw, firm, urządzeń i numerów seryjnych
     existing_items = []
     try:
         res = supabase.table("sprzet").select("nazwa, kategoria, numer_seryjny, dostawca, na_jaka_firme").execute()
@@ -276,20 +275,16 @@ else:
     except Exception:
         existing_items = []
 
-    # Zbiory unikalnych wartości dla słowników Podpowiedzi
     known_nazwy = sorted(list(set([i["nazwa"] for i in existing_items if i.get("nazwa")])))
     known_kategorie = sorted(list(set([i["kategoria"] for i in existing_items if i.get("kategoria")])))
     known_numery = sorted(list(set([i["numer_seryjny"] for i in existing_items if i.get("numer_seryjny")])))
     known_dostawcy = sorted(list(set([i["dostawca"] for i in existing_items if i.get("dostawca")])))
     known_firmy = sorted(list(set([i["na_jaka_firme"] for i in existing_items if i.get("na_jaka_firme")])))
 
-    # Sekcja dodawania sprzętu
     with st.expander("➕ Dodaj nowy element do bazy sprzętu", expanded=False):
-        # Pomocniczy interfejs wyboru istniejącego lub wpisania nowego
         col1, col2 = st.columns(2)
         
         with col1:
-            # Nazwa urządzenia
             opt_nazwa = ["➕ Dodaj nową nazwę..."] + known_nazwy
             sel_nazwa = st.selectbox("Wybierz istniejącą nazwę sprzętu lub dodaj nową", opt_nazwa)
             if sel_nazwa == "➕ Dodaj nową nazwę...":
@@ -297,7 +292,6 @@ else:
             else:
                 nazwa = sel_nazwa
 
-            # Kategoria
             opt_kat = ["➕ Dodaj nową kategorię..."] + known_kategorie
             sel_kat = st.selectbox("Wybierz istniejącą kategorię lub dodaj nową", opt_kat)
             if sel_kat == "➕ Dodaj nową kategorię...":
@@ -305,7 +299,6 @@ else:
             else:
                 kategoria = sel_kat
 
-            # Numer seryjny
             opt_sn = ["➕ Wpisz nowy numer seryjny..."] + known_numery
             sel_sn = st.selectbox("Wybierz istniejący numer seryjny lub dodaj nowy", opt_sn)
             if sel_sn == "➕ Wpisz nowy numer seryjny...":
@@ -313,7 +306,6 @@ else:
             else:
                 numer_seryjny = sel_sn
 
-            # Dostawca
             opt_dost = ["➕ Dodaj nowego dostawcę..."] + known_dostawcy
             sel_dost = st.selectbox("Wybierz istniejącego dostawcę lub dodaj nowego", opt_dost)
             if sel_dost == "➕ Dodaj nowego dostawcę...":
@@ -322,7 +314,6 @@ else:
                 dostawca = sel_dost
 
         with col2:
-            # Zakupiono na firmę
             opt_firma = ["➕ Dodaj nową firmę/podmiot..."] + known_firmy
             sel_firma = st.selectbox("Wybierz firmę (na kogo kupiono) lub dodaj nową", opt_firma)
             if sel_firma == "➕ Dodaj nową firmę/podmiot...":
@@ -359,7 +350,6 @@ else:
                 except Exception as err:
                     st.error(f"Błąd zapisu do bazy: {err}")
 
-    # Wyświetlanie bazy sprzętu
     st.markdown("<h3 style='color: #c5a880; font-weight: 400; font-size: 1.3rem; margin-top: 30px;'>Aktualny wykaz sprzętu medycznego</h3>", unsafe_allow_html=True)
     try:
         response = supabase.table("sprzet").select("*").execute()

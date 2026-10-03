@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client
 
 # 1. Połączenie z Supabase (skorzystaj ze swoich istniejących danych dostępów)
-# supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# supabase = create_client(https://wfcchwwfikmjpevlfnms.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmY2Nod3dmaWttanBldmxmbm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMjIwMDIsImV4cCI6MjEwNjU5ODAwMn0.rJbsuf60L46ph-24cnbD4vPfqIaTymrczMzw_Wovp5E)
 
 st.title("Ewidencja Sprzętu Medycznego")
 

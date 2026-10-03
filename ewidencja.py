@@ -5,55 +5,92 @@ import datetime
 # Konfiguracja strony
 st.set_page_config(
     page_title="Exclusive Dental Studio – Zasoby",
-    page_icon="🦷",
+    page_icon="✨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Stylizacja: czarne tło, złoty gradient nagłówków i luksusowe akcenty
+# Wstrzyknięcie czcionki Google Fonts (Outfit) oraz dopasowanie stylistyki
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #000000;
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
+
+    /* Ukrycie paska Streamlit u góry */
+    header[data-testid="stHeader"] {
+        background-color: #000000 !important;
+        display: none;
+    }
+    footer {
+        visibility: hidden;
+    }
+    
+    /* Główne tło i czcionka dla całej aplikacji */
+    html, body, [class*="css"], .stApp {
+        font-family: 'Outfit', sans-serif !important;
+        background-color: #000000 !important;
         color: #ffffff;
     }
+
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid #1a1a1a;
+        background-color: #080808 !important;
+        border-right: 1px solid #1c1c1c;
     }
-    h1, h2, h3 {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        background: linear-gradient(135deg, #dfc194 0%, #c5a880 50%, #9e815b 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 500;
+
+    /* Nagłówki - bardzo smukła linia i charakterystyczny złoty akcent */
+    h1 {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 300 !important;
+        color: #ffffff !important;
+        letter-spacing: 0.5px;
+        font-size: 2.2rem !important;
+        margin-bottom: 0.2rem;
+    }
+
+    .gold-text {
+        color: #c5a880 !important;
+        font-weight: 600 !important;
+    }
+
+    h2, h3 {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 400 !important;
+        color: #c5a880 !important;
         letter-spacing: 0.5px;
     }
+
     p, label, span, div {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 300;
         color: #e5e7eb;
     }
+
+    /* Eleganckie przyciski z zaokrągloną czcionką */
     .stButton>button {
-        background: linear-gradient(135deg, #c5a880 0%, #ab8d62 100%);
-        color: #ffffff;
-        border: none;
-        border-radius: 4px;
-        font-weight: 500;
+        font-family: 'Outfit', sans-serif !important;
+        background: #c5a880 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
         letter-spacing: 0.5px;
-        transition: opacity 0.3s ease;
+        transition: background-color 0.3s ease;
     }
     .stButton>button:hover {
-        opacity: 0.9;
-        color: #ffffff;
+        background: #b3966d !important;
     }
+
+    /* Pola formularza */
     div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
-        background-color: #121212 !important;
+        font-family: 'Outfit', sans-serif !important;
+        background-color: #111111 !important;
         color: #ffffff !important;
-        border-color: #262626 !important;
+        border-color: #222222 !important;
+        border-radius: 6px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Łączenie z Supabase i czyszczenie sekretów
+# Łączenie z Supabase
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
     raw_key = st.secrets["SUPABASE_KEY"]
@@ -71,7 +108,8 @@ if "user" not in st.session_state:
     st.session_state["user"] = None
 
 # --- PANEL BOCZNY (Autoryzacja) ---
-st.sidebar.markdown("### 🦷 Exclusive Dental Studio")
+st.sidebar.markdown("<h3 style='color: #c5a880; margin-bottom:0;'>Exclusive Dental Studio</h3>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 0.85rem; color: #888;'>System Zarządzania Zasobami</p>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
 if st.session_state["user"] is None:
@@ -118,8 +156,9 @@ else:
         st.rerun()
 
 # --- GŁÓWNA CZĘŚĆ APLIKACJI ---
-st.title("Exclusive Dental Studio — Zasoby i Sprzęt Medyczny")
-st.markdown("Precyzyjne zarządzanie wyposażeniem kliniki w standardzie premium.")
+st.markdown("<h1>Exclusive Dental Studio <span class='gold-text'>— Zasoby i Sprzęt</span></h1>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 1.1rem; color: #aaa; font-weight: 200;'>Precyzyjne zarządzanie wyposażeniem kliniki. Harmonijny standard opieki.</p>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 
 if st.session_state["user"] is None:
     st.info("🔒 Dostęp do systemu wymaga autoryzacji. Proszę zalogować się za pomocą panelu bocznego.")
@@ -161,7 +200,7 @@ else:
                         st.error(f"Błąd zapisu do bazy: {err}")
 
     # Wyświetlanie bazy sprzętu
-    st.markdown("### Aktualny wykaz sprzętu w klinice")
+    st.markdown("<h3>Aktualny wykaz sprzętu w klinice</h3>", unsafe_allow_html=True)
     try:
         response = supabase.table("sprzet").select("*").execute()
         items = response.data

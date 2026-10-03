@@ -10,12 +10,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Wstrzyknięcie czcionki Outfit/Sofia Pro oraz stylizacja w kolorach marki (czarny, złoty, złoty gradient, biel)
+# Wstrzyknięcie stylów CSS (ciemny motyw, złote akcenty, poprawiony expander i kalendarz)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
-    /* Ukrycie domyślnego paska i nagłówka Streamlit */
+    /* Ukrycie domyślnego nagłówka i stopki Streamlit */
     header[data-testid="stHeader"] {
         background-color: #000000 !important;
         display: none;
@@ -24,7 +24,7 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* Główne tło i domyślny kroju pisma */
+    /* Główne tło i czcionka */
     html, body, [class*="css"], .stApp {
         font-family: 'Outfit', sans-serif !important;
         background-color: #000000 !important;
@@ -55,7 +55,7 @@ st.markdown("""
         border-bottom: 2px solid #c5a880 !important;
     }
 
-    /* Złote akcenty i nagłówki */
+    /* Złote nagłówki */
     .brand-title {
         font-family: 'Outfit', sans-serif !important;
         font-weight: 300 !important;
@@ -78,7 +78,7 @@ st.markdown("""
         margin-bottom: 25px;
     }
 
-    /* Karta powiadomień / informacji */
+    /* Karta powiadomień */
     .luxury-card {
         background-color: #0d0d0d;
         border: 1px solid #1f1f1f;
@@ -92,6 +92,66 @@ st.markdown("""
         font-weight: 300;
         color: #d1d5db;
         font-size: 1rem;
+    }
+
+    /* Poprawka dla Expander (Paska dodawania sprzętu) */
+    .stExpander {
+        background-color: #0d0d0d !important;
+        border: 1px solid #222222 !important;
+        border-radius: 6px !important;
+    }
+    .stExpander details {
+        background-color: #0d0d0d !important;
+        color: #ffffff !important;
+    }
+    .stExpander summary {
+        background-color: #121212 !important;
+        color: #c5a880 !important;
+        font-weight: 500 !important;
+        border-radius: 6px !important;
+    }
+    .stExpander summary:hover {
+        color: #ffffff !important;
+        background-color: #1a1a1a !important;
+    }
+    .stExpander [data-testid="stExpanderDetails"] {
+        background-color: #0d0d0d !important;
+        padding: 20px !important;
+    }
+
+    /* Etykiety pól formularza */
+    label, div[data-testid="stMarkdownContainer"] p {
+        color: #cccccc !important;
+    }
+
+    /* Pola wprowadzania danych */
+    div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
+        font-family: 'Outfit', sans-serif !important;
+        background-color: #141414 !important;
+        color: #ffffff !important;
+        border: 1px solid #2a2a2a !important;
+        border-radius: 4px !important;
+    }
+    div[data-baseweb="input"] input:focus, textarea:focus {
+        border-color: #c5a880 !important;
+    }
+
+    /* Poprawka kalendarza */
+    div[data-baseweb="calendar"], div[role="dialog"] {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+        border: 1px solid #333333 !important;
+    }
+    div[data-baseweb="calendar"] button {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+    div[data-baseweb="calendar"] button:hover {
+        background-color: #c5a880 !important;
+        color: #000000 !important;
+    }
+    div[data-baseweb="popover"] {
+        background-color: #1a1a1a !important;
     }
 
     /* Eleganckie przyciski */
@@ -113,22 +173,10 @@ st.markdown("""
         color: #000000 !important;
         box-shadow: 0 4px 15px rgba(197, 168, 128, 0.2);
     }
-
-    /* Pola formularzy */
-    div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
-        font-family: 'Outfit', sans-serif !important;
-        background-color: #0a0a0a !important;
-        color: #ffffff !important;
-        border: 1px solid #222222 !important;
-        border-radius: 4px !important;
-    }
-    div[data-baseweb="input"] input:focus {
-        border-color: #c5a880 !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
-# Łączenie z Supabase
+# Połączenie z Supabase
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
     raw_key = st.secrets["SUPABASE_KEY"]
@@ -138,7 +186,7 @@ except Exception as e:
     st.error(f"Błąd konfiguracji Supabase: {e}")
     st.stop()
 
-# Lista adresów e-mail z uprawnieniami Administratora
+# Lista administratorów
 ADMIN_EMAILS = ["exclusivedentalstudio@gmail.com"]
 
 # Stan sesji
@@ -220,41 +268,96 @@ if st.session_state["user"] is None:
         </div>
     """, unsafe_allow_html=True)
 else:
-    user_email = st.session_state["user"].email
-    is_admin = user_email.lower() in [e.lower() for e in ADMIN_EMAILS]
+    # Pobieranie danych z bazy w celu zapamiętania/podpowiadania nazw, firm, urządzeń i numerów seryjnych
+    existing_items = []
+    try:
+        res = supabase.table("sprzet").select("nazwa, kategoria, numer_seryjny, dostawca, na_jaka_firme").execute()
+        existing_items = res.data or []
+    except Exception:
+        existing_items = []
+
+    # Zbiory unikalnych wartości dla słowników Podpowiedzi
+    known_nazwy = sorted(list(set([i["nazwa"] for i in existing_items if i.get("nazwa")])))
+    known_kategorie = sorted(list(set([i["kategoria"] for i in existing_items if i.get("kategoria")])))
+    known_numery = sorted(list(set([i["numer_seryjny"] for i in existing_items if i.get("numer_seryjny")])))
+    known_dostawcy = sorted(list(set([i["dostawca"] for i in existing_items if i.get("dostawca")])))
+    known_firmy = sorted(list(set([i["na_jaka_firme"] for i in existing_items if i.get("na_jaka_firme")])))
 
     # Sekcja dodawania sprzętu
     with st.expander("➕ Dodaj nowy element do bazy sprzętu", expanded=False):
-        with st.form("add_equipment_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                nazwa = st.text_input("Nazwa sprzętu *")
-                kategoria = st.text_input("Kategoria (np. Chirurgia, Diagnostyka)")
-                numer_seryjny = st.text_input("Numer seryjny / ID")
-            with col2:
-                data_przegladu = st.date_input("Data następnego przeglądu", value=datetime.date.today())
-                status = st.selectbox("Status", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
-                uwagi = st.text_area("Uwagi / Opis", height=68)
-            
-            submitted = st.form_submit_button("Zapisz w bazie", type="primary")
-            if submitted:
-                if not nazwa:
-                    st.warning("Nazwa sprzętu jest wymagana.")
-                else:
-                    try:
-                        data_to_insert = {
-                            "nazwa": nazwa,
-                            "kategoria": kategoria,
-                            "numer_seryjny": numer_seryjny,
-                            "data_przegladu": str(data_przegladu),
-                            "status": status,
-                            "uwagi": uwagi
-                        }
-                        supabase.table("sprzet").insert(data_to_insert).execute()
-                        st.success(f"Dodano pomyślnie: **{nazwa}**")
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Błąd zapisu do bazy: {err}")
+        # Pomocniczy interfejs wyboru istniejącego lub wpisania nowego
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Nazwa urządzenia
+            opt_nazwa = ["➕ Dodaj nową nazwę..."] + known_nazwy
+            sel_nazwa = st.selectbox("Wybierz istniejącą nazwę sprzętu lub dodaj nową", opt_nazwa)
+            if sel_nazwa == "➕ Dodaj nową nazwę...":
+                nazwa = st.text_input("Nazwa sprzętu *", placeholder="np. Mikroskop Stomatologiczny")
+            else:
+                nazwa = sel_nazwa
+
+            # Kategoria
+            opt_kat = ["➕ Dodaj nową kategorię..."] + known_kategorie
+            sel_kat = st.selectbox("Wybierz istniejącą kategorię lub dodaj nową", opt_kat)
+            if sel_kat == "➕ Dodaj nową kategorię...":
+                kategoria = st.text_input("Kategoria", placeholder="np. Endodoncja, Diagnostyka")
+            else:
+                kategoria = sel_kat
+
+            # Numer seryjny
+            opt_sn = ["➕ Wpisz nowy numer seryjny..."] + known_numery
+            sel_sn = st.selectbox("Wybierz istniejący numer seryjny lub dodaj nowy", opt_sn)
+            if sel_sn == "➕ Wpisz nowy numer seryjny...":
+                numer_seryjny = st.text_input("Numer seryjny / ID", placeholder="np. SN-2024-889")
+            else:
+                numer_seryjny = sel_sn
+
+            # Dostawca
+            opt_dost = ["➕ Dodaj nowego dostawcę..."] + known_dostawcy
+            sel_dost = st.selectbox("Wybierz istniejącego dostawcę lub dodaj nowego", opt_dost)
+            if sel_dost == "➕ Dodaj nowego dostawcę...":
+                dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply Sp. z o.o.")
+            else:
+                dostawca = sel_dost
+
+        with col2:
+            # Zakupiono na firmę
+            opt_firma = ["➕ Dodaj nową firmę/podmiot..."] + known_firmy
+            sel_firma = st.selectbox("Wybierz firmę (na kogo kupiono) lub dodaj nową", opt_firma)
+            if sel_firma == "➕ Dodaj nową firmę/podmiot...":
+                na_jaka_firme = st.text_input("Zakupiono na firmę (NIP / Nazwa)", placeholder="np. Exclusive Dental Clinic NIP: 1234567890")
+            else:
+                na_jaka_firme = sel_firma
+
+            data_zakupu = st.date_input("Data zakupu", value=datetime.date.today())
+            data_przegladu = st.date_input("Data następnego przeglądu", value=datetime.date.today() + datetime.timedelta(days=365))
+            status = st.selectbox("Status sprzętu", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
+
+        uwagi = st.text_area("Uwagi / Opis", height=80)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Zapisz w bazie sprzętu", type="primary"):
+            if not nazwa or nazwa.strip() == "":
+                st.warning("Nazwa sprzętu jest wymagana.")
+            else:
+                try:
+                    data_to_insert = {
+                        "nazwa": nazwa.strip(),
+                        "kategoria": kategoria.strip() if kategoria else "",
+                        "numer_seryjny": numer_seryjny.strip() if numer_seryjny else "",
+                        "dostawca": dostawca.strip() if dostawca else "",
+                        "data_zakupu": str(data_zakupu),
+                        "data_przegladu": str(data_przegladu),
+                        "na_jaka_firme": na_jaka_firme.strip() if na_jaka_firme else "",
+                        "status": status,
+                        "uwagi": uwagi.strip() if uwagi else ""
+                    }
+                    supabase.table("sprzet").insert(data_to_insert).execute()
+                    st.success(f"Dodano pomyślnie: **{nazwa}**")
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"Błąd zapisu do bazy: {err}")
 
     # Wyświetlanie bazy sprzętu
     st.markdown("<h3 style='color: #c5a880; font-weight: 400; font-size: 1.3rem; margin-top: 30px;'>Aktualny wykaz sprzętu medycznego</h3>", unsafe_allow_html=True)

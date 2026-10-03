@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Wstrzyknięcie stylów CSS (w tym pełne nadpisanie kalendarza Streamlit)
+# Wstrzyknięcie stylów CSS (ciemny motyw, złote akcenty)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
@@ -125,36 +125,6 @@ st.markdown("""
     }
     div[data-baseweb="input"] input:focus, textarea:focus {
         border-color: #c5a880 !important;
-    }
-
-    /* SILNE STYLE DLA KALENDARZA I POPUPÓW */
-    div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="dialog"] {
-        background-color: #121212 !important;
-        color: #ffffff !important;
-        border: 1px solid #333333 !important;
-    }
-    div[data-baseweb="calendar"] {
-        background-color: #121212 !important;
-        color: #ffffff !important;
-    }
-    div[data-baseweb="calendar"] header, div[data-baseweb="calendar"] div {
-        background-color: #121212 !important;
-        color: #ffffff !important;
-    }
-    div[data-baseweb="calendar"] button {
-        color: #ffffff !important;
-        background-color: transparent !important;
-        border-radius: 4px !important;
-    }
-    div[data-baseweb="calendar"] button:hover {
-        background-color: #c5a880 !important;
-        color: #000000 !important;
-    }
-    /* Wybrany dzień w kalendarzu */
-    div[data-baseweb="calendar"] [aria-selected="true"] {
-        background-color: #c5a880 !important;
-        color: #000000 !important;
-        font-weight: bold !important;
     }
 
     .stButton>button {
@@ -321,8 +291,13 @@ else:
             else:
                 na_jaka_firme = sel_firma
 
-            data_zakupu = st.date_input("Data zakupu", value=datetime.date.today())
-            data_przegladu = st.date_input("Data następnego przeglądu", value=datetime.date.today() + datetime.timedelta(days=365))
+            # Stabilne pola dat w ciemnym motywie
+            default_date_str = datetime.date.today().strftime("%Y-%m-%d")
+            default_future_str = (datetime.date.today() + datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+            
+            data_zakupu = st.text_input("Data zakupu (RRRR-MM-DD)", value=default_date_str)
+            data_przegladu = st.text_input("Data następnego przeglądu (RRRR-MM-DD)", value=default_future_str)
+            
             status = st.selectbox("Status sprzętu", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
 
         uwagi = st.text_area("Uwagi / Opis", height=80)
@@ -338,8 +313,8 @@ else:
                         "kategoria": kategoria.strip() if kategoria else "",
                         "numer_seryjny": numer_seryjny.strip() if numer_seryjny else "",
                         "dostawca": dostawca.strip() if dostawca else "",
-                        "data_zakupu": str(data_zakupu),
-                        "data_przegladu": str(data_przegladu),
+                        "data_zakupu": data_zakupu.strip() if data_zakupu else None,
+                        "data_przegladu": data_przegladu.strip() if data_przegladu else None,
                         "na_jaka_firme": na_jaka_firme.strip() if na_jaka_firme else "",
                         "status": status,
                         "uwagi": uwagi.strip() if uwagi else ""

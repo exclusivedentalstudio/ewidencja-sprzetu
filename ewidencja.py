@@ -238,9 +238,10 @@ if st.session_state["user"] is None:
         </div>
     """, unsafe_allow_html=True)
 else:
+    # Pobieranie istniejącego sprzętu
     existing_items = []
     try:
-        res = supabase.table("sprzet").select("nazwa, kategoria, numer_seryjny, dostawca, na_jaka_firme").execute()
+        res = supabase.table("sprzet").select("*").execute()
         existing_items = res.data or []
     except Exception:
         existing_items = []
@@ -251,53 +252,37 @@ else:
     known_dostawcy = sorted(list(set([i["dostawca"] for i in existing_items if i.get("dostawca")])))
     known_firmy = sorted(list(set([i["na_jaka_firme"] for i in existing_items if i.get("na_jaka_firme")])))
 
+    # --- SEKCJA 1: DODawanie sprzętu ---
     with st.expander("➕ Dodaj nowy element do bazy sprzętu", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
             opt_nazwa = ["➕ Dodaj nową nazwę..."] + known_nazwy
             sel_nazwa = st.selectbox("Wybierz istniejącą nazwę sprzętu lub dodaj nową", opt_nazwa)
-            if sel_nazwa == "➕ Dodaj nową nazwę...":
-                nazwa = st.text_input("Nazwa sprzętu *", placeholder="np. Mikroskop Stomatologiczny")
-            else:
-                nazwa = sel_nazwa
+            nazwa = st.text_input("Nazwa sprzętu *", placeholder="np. Mikroskop Stomatologiczny") if sel_nazwa == "➕ Dodaj nową nazwę..." else sel_nazwa
 
             opt_kat = ["➕ Dodaj nową kategorię..."] + known_kategorie
             sel_kat = st.selectbox("Wybierz istniejącą kategorię lub dodaj nową", opt_kat)
-            if sel_kat == "➕ Dodaj nową kategorię...":
-                kategoria = st.text_input("Kategoria", placeholder="np. Endodoncja, Diagnostyka")
-            else:
-                kategoria = sel_kat
+            kategoria = st.text_input("Kategoria", placeholder="np. Endodoncja") if sel_kat == "➕ Dodaj nową kategorię..." else sel_kat
 
             opt_sn = ["➕ Wpisz nowy numer seryjny..."] + known_numery
             sel_sn = st.selectbox("Wybierz istniejący numer seryjny lub dodaj nowy", opt_sn)
-            if sel_sn == "➕ Wpisz nowy numer seryjny...":
-                numer_seryjny = st.text_input("Numer seryjny / ID", placeholder="np. SN-2024-889")
-            else:
-                numer_seryjny = sel_sn
+            numer_seryjny = st.text_input("Numer seryjny / ID", placeholder="np. SN-2024-889") if sel_sn == "➕ Wpisz nowy numer seryjny..." else sel_sn
 
             opt_dost = ["➕ Dodaj nowego dostawcę..."] + known_dostawcy
             sel_dost = st.selectbox("Wybierz istniejącego dostawcę lub dodaj nowego", opt_dost)
-            if sel_dost == "➕ Dodaj nowego dostawcę...":
-                dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply Sp. z o.o.")
-            else:
-                dostawca = sel_dost
+            dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply") if sel_dost == "➕ Dodaj nowego dostawcę..." else sel_dost
 
         with col2:
             opt_firma = ["➕ Dodaj nową firmę/podmiot..."] + known_firmy
             sel_firma = st.selectbox("Wybierz firmę (na kogo kupiono) lub dodaj nową", opt_firma)
-            if sel_firma == "➕ Dodaj nową firmę/podmiot...":
-                na_jaka_firme = st.text_input("Zakupiono na firmę (NIP / Nazwa)", placeholder="np. Exclusive Dental Clinic NIP: 1234567890")
-            else:
-                na_jaka_firme = sel_firma
+            na_jaka_firme = st.text_input("Zakupiono na firmę (NIP / Nazwa)", placeholder="np. Exclusive Dental Clinic") if sel_firma == "➕ Dodaj nową firmę/podmiot..." else sel_firma
 
-            # Stabilne pola dat w ciemnym motywie
             default_date_str = datetime.date.today().strftime("%Y-%m-%d")
             default_future_str = (datetime.date.today() + datetime.timedelta(days=365)).strftime("%Y-%m-%d")
             
             data_zakupu = st.text_input("Data zakupu (RRRR-MM-DD)", value=default_date_str)
             data_przegladu = st.text_input("Data następnego przeglądu (RRRR-MM-DD)", value=default_future_str)
-            
             status = st.selectbox("Status sprzętu", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
 
         uwagi = st.text_area("Uwagi / Opis", height=80)
@@ -325,6 +310,96 @@ else:
                 except Exception as err:
                     st.error(f"Błąd zapisu do bazy: {err}")
 
+    # --- SEKCJA 2: ZARZĄDZANIE SERWISAMI I NAPRAWAMI ---
+    with st.expander("🛠️ Wyślij sprzęt do serwisu / Zarządzaj naprawami", expanded=False):
+        st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>Nowe zgłoszenie serwisowe</h4>", unsafe_allow_html=True)
+        
+        if existing_items:
+            # Słownik do wyboru sprzętu
+            sprzet_options = {f"{item['nazwa']} (SN: {item.get('numer_seryjny', 'brak')}) [Status: {item.get('status')}]": item for item in existing_items}
+            selected_label = st.selectbox("Wybierz urządzenie kierowane do naprawy", list(sprzet_options.keys()))
+            chosen_item = sprzet_options[selected_label]
+
+            with st.form("service_form"):
+                scol1, scol2 = st.columns(2)
+                with scol1:
+                    data_zgloszenia = st.text_input("Data zgłoszenia / wysyłki (RRRR-MM-DD)", value=datetime.date.today().strftime("%Y-%m-%d"))
+                    serwis_firma = st.text_input("Firma serwisowa / Kto przyjął sprzęt", placeholder="np. Serwis Medyczny Sp. z o.o.")
+                with scol2:
+                    rodzaj_naprawy = st.selectbox("Rodzaj naprawy", ["Gwarancyjna", "Płatna"])
+                    uwagi_serwisowe = st.text_area("Opis usterki / Uwagi", height=70)
+
+                submit_service = st.form_submit_button("Wyślij do serwisu (Zmień status na 'W serwisie')", type="primary")
+                if submit_service:
+                    try:
+                        # 1. Dodaj wpis do tabeli serwis
+                        service_data = {
+                            "sprzet_id": chosen_item["id"],
+                            "nazwa_sprzetu": chosen_item["nazwa"],
+                            "numer_seryjny": chosen_item.get("numer_seryjny", ""),
+                            "data_zgloszenia": data_zgloszenia,
+                            "serwis_firma": serwis_firma,
+                            "rodzaj_naprawy": rodzaj_naprawy,
+                            "status_serwisu": "W naprawie",
+                            "uwagi_serwisowe": uwagi_serwisowe
+                        }
+                        supabase.table("serwis").insert(service_data).execute()
+
+                        # 2. Zaktualizuj status w tabeli głównej sprzętu na "W serwisie"
+                        supabase.table("sprzet").update({"status": "W serwisie"}).eq("id", chosen_item["id"]).execute()
+
+                        st.success(f"Urządzenie **{chosen_item['nazwa']}** zostało skierowane do serwisu. Status zmieniony na 'W serwisie'.")
+                        st.rerun()
+                    except Exception as err:
+                        st.error(f"Błąd rejestracji serwisu: {err}")
+        else:
+            st.info("Brak sprzętu w bazie. Dodaj najpierw urządzenie.")
+
+        st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #c5a880; font-weight: 400; margin-top: 20px;'>Aktywne naprawy / Zwrot z serwisu</h4>", unsafe_allow_html=True)
+        
+        try:
+            active_services = supabase.table("serwis").select("*").eq("status_serwisu", "W naprawie").execute().data
+            if active_services:
+                for s in active_services:
+                    with st.container():
+                        st.markdown(f"""
+                            <div style='background: #141414; padding: 15px; border-radius: 6px; border: 1px solid #2a2a2a; margin-bottom: 10px;'>
+                                <strong>{s['nazwa_sprzetu']}</strong> (SN: {s['numer_seryjny']})<br>
+                                <span style='color: #aaa;'>Serwis:</span> {s['serwis_firma']} | <span style='color: #aaa;'>Typ:</span> {s['rodzaj_naprawy']} | <span style='color: #aaa;'>Wysłano:</span> {s['data_zgloszenia']}
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        with st.form(f"return_form_{s['id']}"):
+                            rcol1, rcol2 = st.columns(2)
+                            with rcol1:
+                                data_powrotu = st.text_input("Data powrotu z serwisu (RRRR-MM-DD)", value=datetime.date.today().strftime("%Y-%m-%d"), key=f"ret_date_{s['id']}")
+                            with rcol2:
+                                koszt_naprawy = st.number_input("Koszt naprawy (PLN)", min_value=0.0, step=10.0, value=0.0, key=f"cost_{s['id']}")
+                            
+                            finish_service = st.form_submit_button("Zatwierdź powrót (Zmień status na 'Sprawny')", type="primary")
+                            if finish_service:
+                                try:
+                                    # 1. Zaktualizuj wpis w tabeli serwis
+                                    supabase.table("serwis").update({
+                                        "status_serwisu": "Zakończony",
+                                        "data_powrotu": data_powrotu,
+                                        "koszt_naprawy": koszt_naprawy
+                                    }).eq("id", s["id"]).execute()
+
+                                    # 2. Zmień status sprzętu z powrotem na "Sprawny"
+                                    supabase.table("sprzet").update({"status": "Sprawny"}).eq("id", s["sprzet_id"]).execute()
+
+                                    st.success("Urządzenie pomyślnie wróciło z serwisu i odzyskało status 'Sprawny'!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Błąd aktualizacji: {err}")
+            else:
+                st.info("Brak urządzeń aktualnie przebywających w serwisie.")
+        except Exception as err:
+            st.error(f"Błąd pobierania historii serwisu: {err}")
+
+    # --- SEKCJA 3: WYKAZ SPRZĘTU ---
     st.markdown("<h3 style='color: #c5a880; font-weight: 400; font-size: 1.3rem; margin-top: 30px;'>Aktualny wykaz sprzętu medycznego</h3>", unsafe_allow_html=True)
     try:
         response = supabase.table("sprzet").select("*").execute()

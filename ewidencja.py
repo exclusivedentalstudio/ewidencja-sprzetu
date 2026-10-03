@@ -4,18 +4,18 @@ import datetime
 
 # Konfiguracja strony
 st.set_page_config(
-    page_title="Exclusive Dental Studio – Zasoby",
+    page_title="Exclusive Dental Studio – System Zasobów",
     page_icon="✨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Wstrzyknięcie czcionki Google Fonts (Outfit) oraz dopasowanie stylistyki
+# Wstrzyknięcie czcionki Outfit/Sofia Pro oraz stylizacja w kolorach marki (czarny, złoty, złoty gradient, biel)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
-    /* Ukrycie paska Streamlit u góry */
+    /* Ukrycie domyślnego paska i nagłówka Streamlit */
     header[data-testid="stHeader"] {
         background-color: #000000 !important;
         display: none;
@@ -24,68 +24,106 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* Główne tło i czcionka dla całej aplikacji */
+    /* Główne tło i domyślny kroju pisma */
     html, body, [class*="css"], .stApp {
         font-family: 'Outfit', sans-serif !important;
         background-color: #000000 !important;
         color: #ffffff;
     }
 
+    /* SideBar - lewy panel */
     [data-testid="stSidebar"] {
-        background-color: #080808 !important;
-        border-right: 1px solid #1c1c1c;
+        background-color: #050505 !important;
+        border-right: 1px solid #1a1a1a;
     }
 
-    /* Nagłówki - bardzo smukła linia i charakterystyczny złoty akcent */
-    h1 {
+    /* Zakładki logowania w panelu bocznym */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
         font-family: 'Outfit', sans-serif !important;
         font-weight: 300 !important;
-        color: #ffffff !important;
-        letter-spacing: 0.5px;
-        font-size: 2.2rem !important;
-        margin-bottom: 0.2rem;
+        color: #888888 !important;
+        background-color: transparent !important;
+        border: none !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #c5a880 !important;
+        font-weight: 500 !important;
+        border-bottom: 2px solid #c5a880 !important;
     }
 
-    .gold-text {
+    /* Złote akcenty i nagłówki */
+    .brand-title {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 300 !important;
+        font-size: 2.2rem !important;
+        color: #ffffff !important;
+        letter-spacing: 0.5px;
+        margin-bottom: 0px;
+        line-height: 1.2;
+    }
+    .gold-accent {
         color: #c5a880 !important;
         font-weight: 600 !important;
     }
-
-    h2, h3 {
+    .brand-subtitle {
         font-family: 'Outfit', sans-serif !important;
-        font-weight: 400 !important;
-        color: #c5a880 !important;
-        letter-spacing: 0.5px;
+        font-weight: 200 !important;
+        font-size: 1.05rem !important;
+        color: #aaaaaa !important;
+        margin-top: 6px;
+        margin-bottom: 25px;
     }
 
-    p, label, span, div {
-        font-family: 'Outfit', sans-serif !important;
+    /* Karta powiadomień / informacji */
+    .luxury-card {
+        background-color: #0d0d0d;
+        border: 1px solid #1f1f1f;
+        border-left: 3px solid #c5a880;
+        padding: 24px;
+        border-radius: 6px;
+        margin-top: 15px;
+    }
+    .luxury-card p {
+        margin: 0;
         font-weight: 300;
-        color: #e5e7eb;
+        color: #d1d5db;
+        font-size: 1rem;
     }
 
-    /* Eleganckie przyciski z zaokrągloną czcionką */
+    /* Eleganckie przyciski */
     .stButton>button {
         font-family: 'Outfit', sans-serif !important;
         background: #c5a880 !important;
-        color: #ffffff !important;
+        color: #000000 !important;
         border: none !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
-        letter-spacing: 0.5px;
-        transition: background-color 0.3s ease;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        font-size: 0.85rem !important;
+        padding: 10px 16px !important;
+        transition: all 0.3s ease !important;
     }
     .stButton>button:hover {
-        background: #b3966d !important;
+        background: #d1b58d !important;
+        color: #000000 !important;
+        box-shadow: 0 4px 15px rgba(197, 168, 128, 0.2);
     }
 
-    /* Pola formularza */
+    /* Pola formularzy */
     div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
         font-family: 'Outfit', sans-serif !important;
-        background-color: #111111 !important;
+        background-color: #0a0a0a !important;
         color: #ffffff !important;
-        border-color: #222222 !important;
-        border-radius: 6px !important;
+        border: 1px solid #222222 !important;
+        border-radius: 4px !important;
+    }
+    div[data-baseweb="input"] input:focus {
+        border-color: #c5a880 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -108,9 +146,13 @@ if "user" not in st.session_state:
     st.session_state["user"] = None
 
 # --- PANEL BOCZNY (Autoryzacja) ---
-st.sidebar.markdown("<h3 style='color: #c5a880; margin-bottom:0;'>Exclusive Dental Studio</h3>", unsafe_allow_html=True)
-st.sidebar.markdown("<p style='font-size: 0.85rem; color: #888;'>System Zarządzania Zasobami</p>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
+st.sidebar.markdown("""
+    <div style='padding-top: 10px; padding-bottom: 5px;'>
+        <div style='font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: #c5a880; font-weight: 600;'>Klinika Stomatologiczna</div>
+        <div style='font-size: 1.25rem; font-weight: 300; color: #ffffff; letter-spacing: 0.5px;'>Exclusive Dental Studio</div>
+    </div>
+""", unsafe_allow_html=True)
+st.sidebar.markdown("<hr style='border-color: #1a1a1a; margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
 if st.session_state["user"] is None:
     tab_login, tab_register = st.sidebar.tabs(["Zaloguj się", "Zarejestruj się"])
@@ -118,6 +160,7 @@ if st.session_state["user"] is None:
     with tab_login:
         email = st.text_input("Adres e-mail", key="login_email")
         password = st.text_input("Hasło", type="password", key="login_password")
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Zaloguj do systemu", use_container_width=True):
             try:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
@@ -130,6 +173,7 @@ if st.session_state["user"] is None:
     with tab_register:
         reg_email = st.text_input("Adres e-mail", key="reg_email")
         reg_password = st.text_input("Hasło (min. 6 znaków)", type="password", key="reg_password")
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Utwórz nowe konto", use_container_width=True):
             try:
                 res = supabase.auth.sign_up({"email": reg_email, "password": reg_password})
@@ -140,13 +184,14 @@ else:
     user_email = st.session_state["user"].email
     is_admin = user_email.lower() in [e.lower() for e in ADMIN_EMAILS]
     
-    st.sidebar.markdown(f"**Użytkownik:**\n`{user_email}`")
+    st.sidebar.markdown(f"<div style='font-size:0.9rem; color:#888;'>Zalogowany jako:</div><div style='font-size:0.95rem; color:#fff; font-weight:500;'>{user_email}</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
     if is_admin:
-        st.sidebar.markdown("👑 **Rola:** Administrator")
+        st.sidebar.markdown("<span style='background:#1f1911; color:#c5a880; border:1px solid #3d3120; padding:4px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;'>👑 Administrator</span>", unsafe_allow_html=True)
     else:
-        st.sidebar.markdown("👤 **Rola:** Użytkownik")
+        st.sidebar.markdown("<span style='background:#111111; color:#aaaaaa; border:1px solid #222222; padding:4px 10px; border-radius:4px; font-size:0.8rem; font-weight:500;'>👤 Użytkownik</span>", unsafe_allow_html=True)
         
-    st.sidebar.markdown("---")
+    st.sidebar.markdown("<hr style='border-color: #1a1a1a; margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
     if st.sidebar.button("Wyloguj się", use_container_width=True):
         try:
             supabase.auth.sign_out()
@@ -156,12 +201,24 @@ else:
         st.rerun()
 
 # --- GŁÓWNA CZĘŚĆ APLIKACJI ---
-st.markdown("<h1>Exclusive Dental Studio <span class='gold-text'>— Zasoby i Sprzęt</span></h1>", unsafe_allow_html=True)
-st.markdown("<p style='font-size: 1.1rem; color: #aaa; font-weight: 200;'>Precyzyjne zarządzanie wyposażeniem kliniki. Harmonijny standard opieki.</p>", unsafe_allow_html=True)
-st.markdown("<br>", unsafe_allow_html=True)
+col_head, col_logo = st.columns([4, 1])
+with col_head:
+    st.markdown("<div class='brand-title'>System Zarządzania <span class='gold-accent'>Zasobami i Sprzętem</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='brand-subtitle'>Precyzyjna kontrola wyposażenia kliniki. Harmonia i pełen komfort pracy.</div>", unsafe_allow_html=True)
+
+with col_logo:
+    st.markdown("""
+        <div style='text-align: right; padding-top: 5px;'>
+            <span style='border: 1px solid #c5a880; color: #c5a880; padding: 8px 16px; font-size: 0.8rem; letter-spacing: 2px; font-weight: 500; border-radius: 2px;'>EDS SYSTEM</span>
+        </div>
+    """, unsafe_allow_html=True)
 
 if st.session_state["user"] is None:
-    st.info("🔒 Dostęp do systemu wymaga autoryzacji. Proszę zalogować się za pomocą panelu bocznego.")
+    st.markdown("""
+        <div class='luxury-card'>
+            <p>🔒 <strong>Dostęp zastrzeżony.</strong> Aby uzyskać dostęp do ewidencji i bazy sprzętu medycznego Exclusive Dental Studio, zaloguj się lub zarejestruj konto w panelu bocznym.</p>
+        </div>
+    """, unsafe_allow_html=True)
 else:
     user_email = st.session_state["user"].email
     is_admin = user_email.lower() in [e.lower() for e in ADMIN_EMAILS]
@@ -200,7 +257,7 @@ else:
                         st.error(f"Błąd zapisu do bazy: {err}")
 
     # Wyświetlanie bazy sprzętu
-    st.markdown("<h3>Aktualny wykaz sprzętu w klinice</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #c5a880; font-weight: 400; font-size: 1.3rem; margin-top: 30px;'>Aktualny wykaz sprzętu medycznego</h3>", unsafe_allow_html=True)
     try:
         response = supabase.table("sprzet").select("*").execute()
         items = response.data

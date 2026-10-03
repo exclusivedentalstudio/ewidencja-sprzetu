@@ -405,17 +405,17 @@ else:
             st.dataframe(items, use_container_width=True)
             
             st.markdown("<hr style='border-color: #222; margin-top: 25px;'>", unsafe_allow_html=True)
-            st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>📋 Wybierz sprzęt z listy, aby otworzyć jego pełną kartę i historię</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>📋 Wybierz sprzęt z listy, aby go edytować, usunąć lub przejrzeć historię</h4>", unsafe_allow_html=True)
             
-            # Słownik do wyboru konkretnego urządzenia
-            item_map = {f"{i['nazwa']} | SN: {i.get('numer_seryjny', 'Brak')} | Status: {i.get('status')}": i for i in items}
-            selected_item_label = st.selectbox("Wybierz urządzenie do podglądu:", ["-- Wybierz urządzenie --"] + list(item_map.keys()))
+            # Słownik do wyboru konkretnego urządzenia (dodano ID, aby odróżnić duplikaty)
+            item_map = {f"{i['nazwa']} | SN: {i.get('numer_seryjny', 'Brak')} | ID: {i['id']}": i for i in items}
+            selected_item_label = st.selectbox("Wybierz urządzenie do podglądu / edycji:", ["-- Wybierz urządzenie --"] + list(item_map.keys()))
             
             if selected_item_label != "-- Wybierz urządzenie --":
                 chosen_device = item_map[selected_item_label]
                 dev_id = chosen_device["id"]
                 
-                # WYŚWIETLENIE PEŁNYCH DANYCH SPRZĘTU W ELEGANCKIEJ KARCIE
+                # PODGLĄD DANYCH SPRZĘTU
                 st.markdown(f"""
                 <div class='luxury-card'>
                     <h2 style='color: #c5a880; margin-top: 0; font-weight: 400;'>{chosen_device['nazwa']}</h2>
@@ -431,8 +431,64 @@ else:
                     <p style='margin-top: 15px;'><b>Uwagi:</b> {chosen_device.get('uwagi') or 'Brak dodatkowych uwag.'}</p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # --- SEKCJA EDYCJI I USUWANIA ---
+                col_edit, col_del = st.columns([3, 1])
                 
-                # PEŁNA HISTORIA SERWISOWA WYBRANEGO URZĄDZENIA
+                with col_edit:
+                    with st.expander("✏️ Edytuj dane tego sprzętu", expanded=False):
+                        with st.form(f"edit_form_{dev_id}"):
+                            ecol1, ecol2 = st.columns(2)
+                            with ecol1:
+                                edit_nazwa = st.text_input("Nazwa sprzętu", value=chosen_device.get("nazwa", ""))
+                                edit_kategoria = st.text_input("Kategoria", value=chosen_device.get("kategoria", ""))
+                                edit_sn = st.text_input("Numer seryjny / ID", value=chosen_device.get("numer_seryjny", ""))
+                                edit_dostawca = st.text_input("Dostawca", value=chosen_device.get("dostawca", ""))
+                            with ecol2:
+                                edit_firma = st.text_input("Zakupiono na firmę", value=chosen_device.get("na_jaka_firme", ""))
+                                edit_zakup = st.text_input("Data zakupu (RRRR-MM-DD)", value=str(chosen_device.get("data_zakupu") or ""))
+                                edit_przeglad = st.text_input("Data przeglądu (RRRR-MM-DD)", value=str(chosen_device.get("data_przegladu") or ""))
+                                status_opts = ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"]
+                                current_status = chosen_device.get("status", "Sprawny")
+                                status_idx = status_opts.index(current_status) if current_status in status_opts else 0
+                                edit_status = st.selectbox("Status", status_opts, index=status_idx)
+                            
+                            edit_uwagi = st.text_area("Uwagi", value=chosen_device.get("uwagi", ""))
+                            
+                            btn_update = st.form_submit_button("Zapisz zmiany w sprzęcie", type="primary")
+                            if btn_update:
+                                try:
+                                    updated_data = {
+                                        "nazwa": edit_nazwa.strip(),
+                                        "kategoria": edit_kategoria.strip(),
+                                        "numer_seryjny": edit_sn.strip(),
+                                        "dostawca": edit_dostawca.strip(),
+                                        "na_jaka_firme": edit_firma.strip(),
+                                        "data_zakupu": edit_zakup.strip() if edit_zakup.strip() else None,
+                                        "data_przegladu": edit_przeglad.strip() if edit_przeglad.strip() else None,
+                                        "status": edit_status,
+                                        "uwagi": edit_uwagi.strip()
+                                    }
+                                    supabase.table("sprzet").update(updated_data).eq("id", dev_id).execute()
+                                    st.success("Zapisano zmiany!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Błąd podczas edycji: {err}")
+
+                with col_del:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("🗑️ Usuń ten sprzęt", key=f"del_{dev_id}"):
+                        try:
+                            # Usuwamy najpierw historię serwisu przypisaną do tego urządzenia, aby uniknąć błędów spójności
+                            supabase.table("serwis").delete().eq("sprzet_id", dev_id).execute()
+                            # Usuwamy sam sprzęt
+                            supabase.table("sprzet").delete().eq("id", dev_id).execute()
+                            st.success("Sprzęt usunięty z bazy danych.")
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Błąd podczas usuwania: {err}")
+                
+                # HISTORIA SERWISOWA WYBRANEGO URZĄDZENIA
                 st.markdown("<h4 style='color: #c5a880; font-weight: 400; margin-top: 20px;'>📜 Historia napraw i zgłoszeń serwisowych dla tego urządzenia</h4>", unsafe_allow_html=True)
                 
                 try:

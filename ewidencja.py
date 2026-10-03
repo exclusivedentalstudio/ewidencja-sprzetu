@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import datetime
 
-# Konfiguracja strony i motywu
+# Konfiguracja strony
 st.set_page_config(
     page_title="Exclusive Dental Studio – Zasoby",
     page_icon="🦷",
@@ -10,35 +10,45 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Nadpisanie stylów CSS – dopasowanie do eleganckiej identyfikacji wizualnej (głębokie cienie, jasna czytelność, złote akcenty premium)
+# Stylizacja: czarne tło, złoty gradient nagłówków i luksusowe akcenty
 st.markdown("""
     <style>
-    .main {
-        background-color: #0b0f19;
-        color: #f3f4f6;
+    .stApp {
+        background-color: #000000;
+        color: #ffffff;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+        border-right: 1px solid #1a1a1a;
     }
     h1, h2, h3 {
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        color: #ffffff;
-        font-weight: 400;
+        background: linear-gradient(135deg, #dfc194 0%, #c5a880 50%, #9e815b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 500;
         letter-spacing: 0.5px;
     }
+    p, label, span, div {
+        color: #e5e7eb;
+    }
     .stButton>button {
-        background-color: #c5a880;
+        background: linear-gradient(135deg, #c5a880 0%, #ab8d62 100%);
         color: #ffffff;
         border: none;
         border-radius: 4px;
         font-weight: 500;
-        transition: all 0.3s ease;
+        letter-spacing: 0.5px;
+        transition: opacity 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #b3966d;
+        opacity: 0.9;
         color: #ffffff;
     }
-    div[data-baseweb="input"] input, div[data-baseweb="select"] div {
-        background-color: #161e2d;
-        color: #ffffff;
-        border-color: #2d3748;
+    div[data-baseweb="input"] input, div[data-baseweb="select"] div, textarea {
+        background-color: #121212 !important;
+        color: #ffffff !important;
+        border-color: #262626 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -108,8 +118,8 @@ else:
         st.rerun()
 
 # --- GŁÓWNA CZĘŚĆ APLIKACJI ---
-st.title("✨ Exclusive Dental Studio — Zasoby i Sprzęt Medyczny")
-st.markdown("Precyzyjne zarządzanie wyposażeniem kliniki. Harmonijny standard opieki.")
+st.title("Exclusive Dental Studio — Zasoby i Sprzęt Medyczny")
+st.markdown("Precyzyjne zarządzanie wyposażeniem kliniki w standardzie premium.")
 
 if st.session_state["user"] is None:
     st.info("🔒 Dostęp do systemu wymaga autoryzacji. Proszę zalogować się za pomocą panelu bocznego.")
@@ -151,7 +161,7 @@ else:
                         st.error(f"Błąd zapisu do bazy: {err}")
 
     # Wyświetlanie bazy sprzętu
-    st.markdown("### 📋 Aktualny wykaz sprzętu w klinice")
+    st.markdown("### Aktualny wykaz sprzętu w klinice")
     try:
         response = supabase.table("sprzet").select("*").execute()
         items = response.data

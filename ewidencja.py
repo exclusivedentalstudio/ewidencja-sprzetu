@@ -21,7 +21,7 @@ st.markdown("""
         z-index: 100000 !important;
     }
     
-    /* Podświetlenie ikony/przyscisku otwierania panelu bocznego */
+    /* Podświetlenie ikony/przycisku otwierania panelu bocznego */
     button[data-testid="stHeaderSidebarButton"] {
         color: #c5a880 !important;
         background-color: #111111 !important;
@@ -481,7 +481,7 @@ else:
                                     supabase.table("sprzet").update(updated_data).eq("id", dev_id).execute()
                                     st.success("Zapisano zmiany!")
                                     st.rerun()
-                                meks except Exception as err:
+                                except Exception as err:
                                     st.error(f"Błąd podczas edycji: {err}")
 
                 with col_del:

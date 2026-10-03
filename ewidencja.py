@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import datetime
 
-# Konfiguracja strony
+# Konfiguracja strony - otwarty sidebar domyślnie
 st.set_page_config(
     page_title="Exclusive Dental Studio – System Zasobów",
     page_icon="✨",
@@ -10,15 +10,29 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Wstrzyknięcie stylów CSS (ciemny motyw, złote akcenty)
+# Stylizacja CSS - przywrócenie widoczności przycisku paska bocznego
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
+    /* Tło nagłówka przeźroczyste/czarne, ale widoczne przyciski menu/sidebar */
     header[data-testid="stHeader"] {
-        background-color: #000000 !important;
-        display: none;
+        background-color: transparent !important;
+        z-index: 100000 !important;
     }
+    
+    /* Podświetlenie ikony/przyscisku otwierania panelu bocznego */
+    button[data-testid="stHeaderSidebarButton"] {
+        color: #c5a880 !important;
+        background-color: #111111 !important;
+        border: 1px solid #2a2a2a !important;
+        border-radius: 4px !important;
+    }
+    button[data-testid="stHeaderSidebarButton"]:hover {
+        border-color: #c5a880 !important;
+        color: #ffffff !important;
+    }
+
     footer {
         visibility: hidden;
     }
@@ -149,7 +163,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Połączenie z Supabase (zdefiniowane na samym początku)
+# Połączenie z Supabase
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
     raw_key = st.secrets["SUPABASE_KEY"]
@@ -401,13 +415,10 @@ else:
         response = supabase.table("sprzet").select("*").execute()
         items = response.data
         if items:
-            # Tabela podglądowa na dole
             st.dataframe(items, use_container_width=True)
-            
             st.markdown("<hr style='border-color: #222; margin-top: 25px;'>", unsafe_allow_html=True)
             st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>📋 Wybierz sprzęt z listy, aby go edytować, usunąć lub przejrzeć historię</h4>", unsafe_allow_html=True)
             
-            # Słownik do wyboru konkretnego urządzenia
             item_map = {f"{i['nazwa']} | SN: {i.get('numer_seryjny', 'Brak')} | ID: {i['id']}": i for i in items}
             selected_item_label = st.selectbox("Wybierz urządzenie do podglądu / edycji:", ["-- Wybierz urządzenie --"] + list(item_map.keys()))
             
@@ -415,7 +426,6 @@ else:
                 chosen_device = item_map[selected_item_label]
                 dev_id = chosen_device["id"]
                 
-                # PODGLĄD DANYCH SPRZĘTU
                 st.markdown(f"""
                 <div class='luxury-card'>
                     <h2 style='color: #c5a880; margin-top: 0; font-weight: 400;'>{chosen_device['nazwa']}</h2>
@@ -432,7 +442,6 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # --- SEKCJA EDYCJI I USUWANIA ---
                 col_edit, col_del = st.columns([3, 1])
                 
                 with col_edit:
@@ -472,7 +481,7 @@ else:
                                     supabase.table("sprzet").update(updated_data).eq("id", dev_id).execute()
                                     st.success("Zapisano zmiany!")
                                     st.rerun()
-                                except Exception as err:
+                                meks except Exception as err:
                                     st.error(f"Błąd podczas edycji: {err}")
 
                 with col_del:
@@ -486,7 +495,6 @@ else:
                         except Exception as err:
                             st.error(f"Błąd podczas usuwania: {err}")
                 
-                # HISTORIA SERWISOWA WYBRANEGO URZĄDZENIA
                 st.markdown("<h4 style='color: #c5a880; font-weight: 400; margin-top: 20px;'>📜 Historia napraw i zgłoszeń serwisowych dla tego urządzenia</h4>", unsafe_allow_html=True)
                 
                 try:

@@ -10,17 +10,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Stylizacja CSS - przywrócenie widoczności przycisku paska bocznego
+# Stylizacja CSS - ukrycie paska nagłówka Streamlit oraz stylizacja aplikacji
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
-    /* Tło nagłówka przeźroczyste/czarne, ale widoczne przyciski menu/sidebar */
+    /* Ukrycie paska nagłówka Streamlit (ikony Fork, GitHub, menu) */
     header[data-testid="stHeader"] {
-        background-color: transparent !important;
-        z-index: 100000 !important;
+        display: none !important;
     }
-    
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
     /* Podświetlenie ikony/przycisku otwierania panelu bocznego */
     button[data-testid="stHeaderSidebarButton"] {
         color: #c5a880 !important;
@@ -33,10 +39,6 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    footer {
-        visibility: hidden;
-    }
-    
     html, body, [class*="css"], .stApp {
         font-family: 'Outfit', sans-serif !important;
         background-color: #000000 !important;

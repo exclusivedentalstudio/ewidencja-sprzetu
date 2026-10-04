@@ -10,12 +10,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Stylizacja CSS - ukrycie paska nagłówka Streamlit oraz stylizacja aplikacji
+# Stylizacja CSS - ukrycie nagłówka, paska Streamlit i dolnych plakietek
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
 
-    /* Ukrycie paska nagłówka Streamlit (ikony Fork, GitHub, menu) */
+    /* Ukrycie górnego paska nagłówka Streamlit */
     header[data-testid="stHeader"] {
         display: none !important;
     }
@@ -23,8 +23,16 @@ st.markdown("""
         display: none !important;
     }
 
+    /* Ukrycie paska "Hosted with Streamlit" oraz zielonej ikonki na dole po prawej */
+    [data-testid="stStatusWidget"],
+    #MainMenu,
+    .viewerBadge_container__1QSob,
+    .viewerBadge_link__1S137,
+    div[class*="viewerBadge"],
+    div[class*="stAppDeployButton"],
     footer {
-        visibility: hidden;
+        display: none !important;
+        visibility: hidden !important;
     }
 
     /* Podświetlenie ikony/przycisku otwierania panelu bocznego */

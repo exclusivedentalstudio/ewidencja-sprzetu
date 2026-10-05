@@ -566,3 +566,4 @@ else:
             st.info("Baza danych jest obecnie pusta. Użyj formularza powyżej, aby dodać pierwsze urządzenie.")
     except Exception as err:
         st.error(f"Błąd wczytywania danych z chmury: {err}")
+# odświeżenie

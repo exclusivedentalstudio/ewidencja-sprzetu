@@ -89,7 +89,7 @@ except Exception as e:
 
 df_sprzet = pd.DataFrame(data_sprzet) if data_sprzet else pd.DataFrame()
 
-tab1, tab2, tab3 = st.tabs(["📋 Lista sprzętu", "🛠️ Zgłoszenia serwisowe", "➕ Dodaj nowy sprzęt"])
+tab1, tab2, tab3 = st.tabs(["📋 Lista sprzętu", "🛠️ Historia serwisowa", "➕ Dodaj nowy sprzęt"])
 
 # --- ZAKŁADKA 1: LISTA SPRZĘTU ---
 with tab1:
@@ -120,23 +120,23 @@ with tab1:
     else:
         st.info("Baza danych sprzętu jest pusta lub trwa ładowanie.")
 
-# --- ZAKŁADKA 2: ZGŁOSZENIA SERWISOWE (EDYCJA I USUWANIE) ---
+# --- ZAKŁADKA 2: ZGŁOSZENIA SERWISOWE ---
 with tab2:
-    st.subheader("Zarządzanie zgłoszeniami serwisowymi")
+    st.subheader("🛠️ Zgłoszenia i historia serwisowa")
 
-    # Formularz dodawania nowego zgłoszenia
+    # Dodawanie nowego zgłoszenia
     with st.expander("➕ Dodaj nowe zgłoszenie serwisowe"):
         if not df_sprzet.empty:
             with st.form("form_nowe_zgloszenie"):
                 opcje_sprzetu = {f"{row['nazwa']} (SN: {row.get('numer_seryjny', 'brak')})": row['id'] for _, row in df_sprzet.iterrows()}
                 wybrane_urzadzenie_label = st.selectbox("Wybierz urządzenie", list(opcje_sprzetu.keys()))
                 
-                opis_zgloszenia = st.text_area("Opis usterki / zgłoszenia *")
+                opis_zgloszenia = st.text_area("Opis usterki / prac serwisowych *")
                 data_zgloszenia = st.date_input("Data zgłoszenia", value=date.today())
-                koszt = st.number_input("Szacowany / Rzeczywisty koszt (zł)", min_value=0.0, step=10.0)
-                status_serwisu = st.selectbox("Status zgłoszenia", ["Zgłoszone", "W trakcie naprawy", "Zakończone", "Anulowane"])
+                koszt = st.number_input("Koszt (zł)", min_value=0.0, step=10.0)
+                status_serwisu = st.selectbox("Status zgłoszenia", ["W trakcie", "Zakończone", "Oczekuje na części"])
                 
-                submit_zgloszenie = st.form_submit_button("Zapisz zgłoszenie serwisowe")
+                submit_zgloszenie = st.form_submit_button("Zapisz zgłoszenie")
                 
                 if submit_zgloszenie:
                     if opis_zgloszenia:
@@ -144,47 +144,46 @@ with tab2:
                         payload_serwis = {
                             "sprzet_id": id_sprzetu,
                             "opis": opis_zgloszenia,
-                            "data_zgloszenia": str(data_zgloszenia),
+                            "data": str(data_zgloszenia),
                             "koszt": koszt,
                             "status": status_serwisu
                         }
                         try:
                             supabase.table("serwis").insert(payload_serwis).execute()
-                            st.success("Dodano nowe zgłoszenie serwisowe!")
+                            st.success("Dodano zgłoszenie serwisowe!")
                             st.rerun()
                         except Exception as err:
                             st.error(f"Błąd zapisu zgłoszenia: {err}")
                     else:
                         st.warning("Uzupełnij opis zgłoszenia.")
         else:
-            st.warning("Najpierw dodaj sprzęt w bazie, aby móc rejestrować zgłoszenia serwisowe.")
+            st.warning("Najpierw dodaj sprzęt do bazy.")
 
     st.divider()
-    st.write("### Lista zgłoszeń w bazie")
 
+    # Wyświetlanie wpisów serwisowych z możliwością usuwania i edycji
     if data_serwis:
         for zgl in data_serwis:
             zgl_id = zgl.get("id")
             sprzet_id = zgl.get("sprzet_id")
             
-            # Pobranie nazwy sprzętu na podstawie ID
             nazwa_sprzetu = "Nieokreślony sprzęt"
             if not df_sprzet.empty and "id" in df_sprzet.columns:
-                pasujacy_sprzet = df_sprzet[df_sprzet["id"] == sprzet_id]
-                if not pasujacy_sprzet.empty:
-                    nazwa_sprzetu = pasujacy_sprzet.iloc[0]["nazwa"]
+                pasujace = df_sprzet[df_sprzet["id"] == sprzet_id]
+                if not pasujace.empty:
+                    nazwa_sprzetu = pasujace.iloc[0]["nazwa"]
 
             with st.container():
-                col_info, col_akcje = st.columns([3, 1])
+                col_txt, col_del = st.columns([4, 1])
                 
-                with col_info:
-                    st.markdown(f"**🛠️ Sprzęt:** {nazwa_sprzetu}")
-                    st.markdown(f"**Data:** {zgl.get('data_zgloszenia', 'Brak')} | **Status:** `{zgl.get('status', 'Nieokreślony')}` | **Koszt:** {zgl.get('koszt', 0)} zł")
-                    st.markdown(f"**Opis:** {zgl.get('opis', 'Brak opisu')}")
+                with col_txt:
+                    st.markdown(f"**Sprzęt:** {nazwa_sprzetu}")
+                    st.markdown(f"**Data:** {zgl.get('data', 'Brak')} | **Status:** `{zgl.get('status', 'Brak')}` | **Koszt:** {zgl.get('koszt', 0)} zł")
+                    st.markdown(f"**Opis:** {zgl.get('opis', '')}")
 
-                with col_akcje:
-                    # Przycisk usuwania
-                    if st.button("🗑️ Usuń", key=f"del_serwis_{zgl_id}"):
+                with col_del:
+                    # Przycisk usuwania zgłoszenia
+                    if st.button("🗑️ Usuń", key=f"del_{zgl_id}"):
                         try:
                             supabase.table("serwis").delete().eq("id", zgl_id).execute()
                             st.success("Zgłoszenie zostało usunięte!")
@@ -192,46 +191,29 @@ with tab2:
                         except Exception as e:
                             st.error(f"Błąd podczas usuwania: {e}")
 
-                # Sekcja edycji w rozwijanym panelu
-                with st.expander(f"✏️ Edytuj zgłoszenie (ID: {zgl_id})"):
-                    with st.form(f"form_edytuj_serwis_{zgl_id}"):
-                        nowy_opis = st.text_area("Opis usterki", value=zgl.get("opis", ""))
+                # Panel edycji zgłoszenia
+                with st.expander(f"✏️ Edytuj zgłoszenie #{zgl_id}"):
+                    with st.form(f"edit_form_{zgl_id}"):
+                        e_opis = st.text_area("Opis usterki", value=zgl.get("opis", ""))
+                        e_koszt = st.number_input("Koszt (zł)", value=float(zgl.get("koszt") or 0.0), min_value=0.0, step=10.0, key=f"k_{zgl_id}")
+                        e_status = st.selectbox("Status", ["W trakcie", "Zakończone", "Oczekuje na części"], key=f"s_{zgl_id}")
                         
-                        # Pobranie dotychczasowej daty
-                        domyslna_data = date.today()
-                        if zgl.get("data_zgloszenia"):
-                            try:
-                                domyslna_data = datetime.strptime(str(zgl.get("data_zgloszenia")), "%Y-%m-%d").date()
-                            except ValueError:
-                                pass
-                        nowa_data = st.date_input("Data zgłoszenia", value=domyslna_data, key=f"data_{zgl_id}")
-                        
-                        nowy_koszt = st.number_input("Koszt (zł)", value=float(zgl.get("koszt") or 0.0), min_value=0.0, step=10.0, key=f"koszt_{zgl_id}")
-                        
-                        opcje_statusu = ["Zgłoszone", "W trakcie naprawy", "Zakończone", "Anulowane"]
-                        obecny_status = zgl.get("status", "Zgłoszone")
-                        index_statusu = opcje_statusu.index(obecny_status) if obecny_status in opcje_statusu else 0
-                        nowy_status = st.selectbox("Status", opcje_statusu, index=index_statusu, key=f"status_{zgl_id}")
-
-                        btn_zapisz_edycje = st.form_submit_button("Zapisz zmiany")
-
-                        if btn_zapisz_edycje:
+                        btn_update = st.form_submit_button("Zapisz zmiany")
+                        if btn_update:
                             try:
                                 supabase.table("serwis").update({
-                                    "opis": nowy_opis,
-                                    "data_zgloszenia": str(nowa_data),
-                                    "koszt": nowy_koszt,
-                                    "status": nowy_status
+                                    "opis": e_opis,
+                                    "koszt": e_koszt,
+                                    "status": e_status
                                 }).eq("id", zgl_id).execute()
-                                
                                 st.success("Pomyślnie zaktualizowano zgłoszenie!")
                                 st.rerun()
                             except Exception as err:
-                                st.error(f"Błąd podczas aktualizacji: {err}")
+                                st.error(f"Błąd aktualizacji: {err}")
 
             st.divider()
     else:
-        st.info("Brak zgłoszeń serwisowych w bazie.")
+        st.info("Brak wpisów serwisowych w bazie.")
 
 # --- ZAKŁADKA 3: DODAWANIE SPRZĘTU ---
 with tab3:

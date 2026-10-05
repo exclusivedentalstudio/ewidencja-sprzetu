@@ -276,6 +276,7 @@ else:
     known_numery = sorted(list(set([i["numer_seryjny"] for i in existing_items if i.get("numer_seryjny")])))
     known_dostawcy = sorted(list(set([i["dostawca"] for i in existing_items if i.get("dostawca")])))
     known_firmy = sorted(list(set([i["na_jaka_firme"] for i in existing_items if i.get("na_jaka_firme")])))
+    known_lokalizacje = sorted(list(set([i["lokalizacja"] for i in existing_items if i.get("lokalizacja")])))
 
     # --- SEKCJA 1: DODAWANIE SPRZĘTU ---
     with st.expander("➕ Dodaj nowy element do bazy sprzętu", expanded=False):
@@ -294,20 +295,32 @@ else:
             sel_sn = st.selectbox("Wybierz istniejący numer seryjny lub dodaj nowy", opt_sn)
             numer_seryjny = st.text_input("Numer seryjny / ID", placeholder="np. SN-2024-889") if sel_sn == "➕ Wpisz nowy numer seryjny..." else sel_sn
 
+            opt_lokalizacja = ["➕ Wpisz nową lokalizację..."] + known_lokalizacje
+            sel_lokalizacja = st.selectbox("Wybierz lokalizację lub wpisz nową", opt_lokalizacja)
+            lokalizacja = st.text_input("Gdzie się znajduje / Lokalizacja", placeholder="np. Gabinet 1 / Sterylizatornia / Magazyn") if sel_lokalizacja == "➕ Wpisz nową lokalizację..." else sel_lokalizacja
+
+        with col2:
             opt_dost = ["➕ Dodaj nowego dostawcę..."] + known_dostawcy
             sel_dost = st.selectbox("Wybierz istniejącego dostawcę lub dodaj nowego", opt_dost)
             dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply") if sel_dost == "➕ Dodaj nowego dostawcę..." else sel_dost
 
-        with col2:
             opt_firma = ["➕ Dodaj nową firmę/podmiot..."] + known_firmy
             sel_firma = st.selectbox("Wybierz firmę (na kogo kupiono) lub dodaj nową", opt_firma)
             na_jaka_firme = st.text_input("Zakupiono na firmę (NIP / Nazwa)", placeholder="np. Exclusive Dental Clinic") if sel_firma == "➕ Dodaj nową firmę/podmiot..." else sel_firma
 
             default_date_str = datetime.date.today().strftime("%Y-%m-%d")
             default_future_str = (datetime.date.today() + datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+            default_guarantee_str = (datetime.date.today() + datetime.timedelta(days=730)).strftime("%Y-%m-%d")
             
             data_zakupu = st.text_input("Data zakupu (RRRR-MM-DD)", value=default_date_str)
             data_przegladu = st.text_input("Data następnego przeglądu (RRRR-MM-DD)", value=default_future_str)
+            
+            # --- OPCJA GWARANCJI ---
+            czy_gwarancja = st.checkbox("Sprzęt objęty gwarancją", value=True)
+            gwarancja_do = ""
+            if czy_gwarancja:
+                gwarancja_do = st.text_input("Gwarancja ważna do (RRRR-MM-DD)", value=default_guarantee_str)
+
             status = st.selectbox("Status sprzętu", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
 
         uwagi = st.text_area("Uwagi / Opis", height=80)
@@ -322,9 +335,12 @@ else:
                         "nazwa": nazwa.strip(),
                         "kategoria": kategoria.strip() if kategoria else "",
                         "numer_seryjny": numer_seryjny.strip() if numer_seryjny else "",
+                        "lokalizacja": lokalizacja.strip() if lokalizacja else "",
                         "dostawca": dostawca.strip() if dostawca else "",
                         "data_zakupu": data_zakupu.strip() if data_zakupu else None,
                         "data_przegladu": data_przegladu.strip() if data_przegladu else None,
+                        "czy_gwarancja": czy_gwarancja,
+                        "gwarancja_do": gwarancja_do.strip() if (czy_gwarancja and gwarancja_do) else None,
                         "na_jaka_firme": na_jaka_firme.strip() if na_jaka_firme else "",
                         "status": status,
                         "uwagi": uwagi.strip() if uwagi else ""
@@ -367,7 +383,7 @@ else:
                             "uwagi_serwisowe": uwagi_serwisowe
                         }
                         supabase.table("serwis").insert(service_data).execute()
-                        supabase.table("sprzet").update({"status": "W serwisie"}).eq("id", chosen_item["id"]).execute()
+                        supabase.table("sprzet").update({"status": "W serwisie", "lokalizacja": "Serwis zewnętrzny"}).eq("id", chosen_item["id"]).execute()
 
                         st.success(f"Urządzenie **{chosen_item['nazwa']}** zostało skierowane do serwisu.")
                         st.rerun()
@@ -395,6 +411,7 @@ else:
                             rcol1, rcol2 = st.columns(2)
                             with rcol1:
                                 data_powrotu = st.text_input("Data powrotu z serwisu (RRRR-MM-DD)", value=datetime.date.today().strftime("%Y-%m-%d"), key=f"ret_date_{s['id']}")
+                                powrot_lokalizacja = st.text_input("Przywróć do lokalizacji", value="Gabinet 1", key=f"ret_loc_{s['id']}")
                             with rcol2:
                                 koszt_naprawy = st.number_input("Koszt naprawy (PLN)", min_value=0.0, step=10.0, value=0.0, key=f"cost_{s['id']}")
                             
@@ -407,7 +424,10 @@ else:
                                         "koszt_naprawy": koszt_naprawy
                                     }).eq("id", s["id"]).execute()
 
-                                    supabase.table("sprzet").update({"status": "Sprawny"}).eq("id", s["sprzet_id"]).execute()
+                                    supabase.table("sprzet").update({
+                                        "status": "Sprawny",
+                                        "lokalizacja": powrot_lokalizacja.strip()
+                                    }).eq("id", s["sprzet_id"]).execute()
 
                                     st.success("Urządzenie pomyślnie wróciło z serwisu i odzyskało status 'Sprawny'!")
                                     st.rerun()
@@ -436,12 +456,24 @@ else:
                 chosen_device = item_map[selected_item_label]
                 dev_id = chosen_device["id"]
                 
+                # Formatowanie tekstu o gwarancji
+                is_guarantee = chosen_device.get("czy_gwarancja", False)
+                guarantee_until = chosen_device.get("gwarancja_do")
+                if is_guarantee and guarantee_until:
+                    guarantee_status_html = f"<span style='color: #4CAF50;'>🟢 Aktywna (do {guarantee_until})</span>"
+                elif is_guarantee:
+                    guarantee_status_html = "<span style='color: #4CAF50;'>🟢 Tak (brak daty)</span>"
+                else:
+                    guarantee_status_html = "<span style='color: #888888;'>🔴 Brak / Wygasła</span>"
+
                 st.markdown(f"""
                 <div class='luxury-card'>
                     <h2 style='color: #c5a880; margin-top: 0; font-weight: 400;'>{chosen_device['nazwa']}</h2>
                     <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;'>
                         <p><b>Kategoria:</b> {chosen_device.get('kategoria') or '—'}</p>
                         <p><b>Numer Seryjny / ID:</b> {chosen_device.get('numer_seryjny') or '—'}</p>
+                        <p><b>Lokalizacja / Gdzie jest:</b> <span style='color: #c5a880; font-weight: 500;'>{chosen_device.get('lokalizacja') or '—'}</span></p>
+                        <p><b>Gwarancja:</b> {guarantee_status_html}</p>
                         <p><b>Dostawca:</b> {chosen_device.get('dostawca') or '—'}</p>
                         <p><b>Zakupiono na firmę:</b> {chosen_device.get('na_jaka_firme') or '—'}</p>
                         <p><b>Data Zakupu:</b> {chosen_device.get('data_zakupu') or '—'}</p>
@@ -462,8 +494,13 @@ else:
                                 edit_nazwa = st.text_input("Nazwa sprzętu", value=chosen_device.get("nazwa", ""))
                                 edit_kategoria = st.text_input("Kategoria", value=chosen_device.get("kategoria", ""))
                                 edit_sn = st.text_input("Numer seryjny / ID", value=chosen_device.get("numer_seryjny", ""))
-                                edit_dostawca = st.text_input("Dostawca", value=chosen_device.get("dostawca", ""))
+                                edit_lokalizacja = st.text_input("Lokalizacja / Gdzie się znajduje", value=chosen_device.get("lokalizacja", ""))
+                                
+                                edit_czy_gwarancja = st.checkbox("Sprzęt objęty gwarancją", value=bool(chosen_device.get("czy_gwarancja", False)))
+                                edit_gwarancja_do = st.text_input("Gwarancja ważna do (RRRR-MM-DD)", value=str(chosen_device.get("gwarancja_do") or ""))
+                                
                             with ecol2:
+                                edit_dostawca = st.text_input("Dostawca", value=chosen_device.get("dostawca", ""))
                                 edit_firma = st.text_input("Zakupiono na firmę", value=chosen_device.get("na_jaka_firme", ""))
                                 edit_zakup = st.text_input("Data zakupu (RRRR-MM-DD)", value=str(chosen_device.get("data_zakupu") or ""))
                                 edit_przeglad = st.text_input("Data przeglądu (RRRR-MM-DD)", value=str(chosen_device.get("data_przegladu") or ""))
@@ -481,10 +518,13 @@ else:
                                         "nazwa": edit_nazwa.strip(),
                                         "kategoria": edit_kategoria.strip(),
                                         "numer_seryjny": edit_sn.strip(),
+                                        "lokalizacja": edit_lokalizacja.strip(),
                                         "dostawca": edit_dostawca.strip(),
                                         "na_jaka_firme": edit_firma.strip(),
                                         "data_zakupu": edit_zakup.strip() if edit_zakup.strip() else None,
                                         "data_przegladu": edit_przeglad.strip() if edit_przeglad.strip() else None,
+                                        "czy_gwarancja": edit_czy_gwarancja,
+                                        "gwarancja_do": edit_gwarancja_do.strip() if (edit_czy_gwarancja and edit_gwarancja_do.strip()) else None,
                                         "status": edit_status,
                                         "uwagi": edit_uwagi.strip()
                                     }

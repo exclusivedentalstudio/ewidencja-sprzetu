@@ -268,7 +268,6 @@ if st.session_state["user"] is None:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Pobieranie istniejącego sprzętu z bazy
     existing_items = []
     try:
         res = supabase.table("sprzet").select("*").execute()
@@ -307,7 +306,7 @@ else:
         with col2:
             opt_dost = ["➕ Dodaj nowego dostawcę..."] + known_dostawcy
             sel_dost = st.selectbox("Wybierz istniejącego dostawcę lub dodaj nowego", opt_dost)
-            dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply") if sel_dost == "➕ Dodaj nowego dostawcę..." else sel_dost
+            dostawca = st.text_input("Dostawca / Od kogo kupiono", placeholder="np. Dental Supply") if sel_dost == "➕ Dodaj nowego dostawcę..." else dostawca
 
             opt_firma = ["➕ Dodaj nową firmę/podmiot..."] + known_firmy
             sel_firma = st.selectbox("Wybierz firmę (na kogo kupiono) lub dodaj nową", opt_firma)
@@ -320,7 +319,6 @@ else:
             data_zakupu = st.text_input("Data zakupu (RRRR-MM-DD)", value=default_date_str)
             data_przegladu = st.text_input("Data następnego przeglądu (RRRR-MM-DD)", value=default_future_str)
             
-            # --- OPCJA GWARANCJI ---
             czy_gwarancja = st.checkbox("Sprzęt objęty gwarancją", value=True)
             gwarancja_do = ""
             if czy_gwarancja:
@@ -461,7 +459,6 @@ else:
                 chosen_device = item_map[selected_item_label]
                 dev_id = chosen_device["id"]
                 
-                # Formatowanie tekstu o gwarancji
                 is_guarantee = chosen_device.get("czy_gwarancja", False)
                 guarantee_until = chosen_device.get("gwarancja_do")
                 if is_guarantee and guarantee_until:
@@ -556,28 +553,83 @@ else:
                     serv_history = supabase.table("serwis").select("*").eq("sprzet_id", dev_id).order("data_zgloszenia", desc=True).execute().data
                     if serv_history:
                         for entry in serv_history:
-                            with st.expander(f"🔧 Zgłoszenie z dnia {entry.get('data_zgloszenia', 'Brak daty')} | Firma: {entry.get('serwis_firma', 'Brak')} | Status: {entry.get('status_serwisu', 'Nieokreślony')}"):
-                                st.write(f"**Firma serwisowa:** {entry.get('serwis_firma') or '—'}")
-                                st.write(f"**Rodzaj naprawy:** {entry.get('rodzaj_naprawy') or '—'}")
-                                st.write(f"**Data zgłoszenia:** {entry.get('data_zgloszenia') or '—'}")
-                                st.write(f"**Data powrotu z serwisu:** {entry.get('data_powrotu') or 'Sprzęt wciąż w serwisie'}")
-                                st.write(f"**Koszt naprawy:** {entry.get('koszt_naprawy') or 0} PLN")
-                                st.write(f"**Opis / Uwagi:** {entry.get('uwagi_serwisowe') or 'Brak'}")
-                                
-                                st.markdown("<br>", unsafe_allow_html=True)
-                                # PRZYCISK USUWANIA DANEGO ZGŁOSZENIA
-                                if st.button("🗑️ Usuń to zgłoszenie", key=f"del_serv_{entry['id']}"):
-                                    try:
-                                        supabase.table("serwis").delete().eq("id", entry["id"]).execute()
-                                        
-                                        # Jeśli usuwane zgłoszenie miało status "W naprawie", przywracamy sprzęt do statusu "Sprawny"
-                                        if entry.get("status_serwisu") == "W naprawie":
-                                            supabase.table("sprzet").update({"status": "Sprawny"}).eq("id", dev_id).execute()
+                            entry_id = entry["id"]
+                            firma = entry.get("serwis_firma") or "—"
+                            status_serw = entry.get("status_serwisu") or "—"
+                            data_zgl = entry.get("data_zgloszenia") or "—"
+
+                            header_label = f"🔧 Zgłoszenie z dnia {data_zgl} | Firma: {firma} | Status: {status_serw}"
+
+                            with st.expander(header_label):
+                                edit_key = f"edit_mode_{entry_id}"
+                                if edit_key not in st.session_state:
+                                    st.session_state[edit_key] = False
+
+                                if not st.session_state[edit_key]:
+                                    st.write(f"**Firma serwisowa:** {firma}")
+                                    st.write(f"**Rodzaj naprawy:** {entry.get('rodzaj_naprawy') or '—'}")
+                                    st.write(f"**Data zgłoszenia:** {data_zgl}")
+                                    
+                                    data_powrotu = entry.get("data_powrotu")
+                                    st.write(f"**Data powrotu z serwisu:** {data_powrotu if data_powrotu else 'Sprzęt wciąż w serwisie'}")
+                                    st.write(f"**Koszt naprawy:** {entry.get('koszt_naprawy') or 0} PLN")
+                                    st.write(f"**Opis / Uwagi:** {entry.get('uwagi_serwisowe') or 'Brak'}")
+
+                                    st.markdown("<br>", unsafe_allow_html=True)
+                                    col_btn1, col_btn2 = st.columns(2)
+                                    
+                                    with col_btn1:
+                                        if st.button("✏️️ Edytuj to zgłoszenie", key=f"btn_edit_{entry_id}"):
+                                            st.session_state[edit_key] = True
+                                            st.rerun()
                                             
-                                        st.success("Zgłoszenie serwisowe zostało usunięte!")
-                                        st.rerun()
-                                    except Exception as err:
-                                        st.error(f"Błąd podczas usuwania zgłoszenia: {err}")
+                                    with col_btn2:
+                                        if st.button("🗑️ Usuń to zgłoszenie", key=f"del_serv_{entry_id}"):
+                                            try:
+                                                supabase.table("serwis").delete().eq("id", entry_id).execute()
+                                                if status_serw == "W naprawie":
+                                                    supabase.table("sprzet").update({"status": "Sprawny"}).eq("id", dev_id).execute()
+                                                st.success("Zgłoszenie serwisowe zostało usunięte!")
+                                                st.rerun()
+                                            except Exception as err:
+                                                st.error(f"Błąd podczas usuwania zgłoszenia: {err}")
+                                else:
+                                    st.markdown("<h4 style='color: #c5a880; font-weight: 400;'>✏️ Edycja zgłoszenia serwisowego</h4>", unsafe_allow_html=True)
+                                    with st.form(key=f"form_edit_serwis_{entry_id}"):
+                                        new_firma = st.text_input("Firma serwisowa", value=entry.get("serwis_firma") or "")
+                                        
+                                        rodzaje_list = ["Gwarancyjna", "Płatna", "Przegląd okresowy"]
+                                        curr_rodzaj = entry.get("rodzaj_naprawy", "Płatna")
+                                        rodzaj_idx = rodzaje_list.index(curr_rodzaj) if curr_rodzaj in rodzaje_list else 0
+                                        new_rodzaj = st.selectbox("Rodzaj naprawy", rodzaje_list, index=rodzaj_idx)
+                                        
+                                        new_koszt = st.number_input("Koszt naprawy (PLN)", min_value=0.0, step=10.0, value=float(entry.get("koszt_naprawy") or 0.0))
+                                        new_uwagi = st.text_area("Opis / Uwagi", value=entry.get("uwagi_serwisowe") or "")
+
+                                        col_save, col_cancel = st.columns(2)
+                                        with col_save:
+                                            saved = st.form_submit_button("💾 Zapisz zmiany", type="primary")
+                                        with col_cancel:
+                                            canceled = st.form_submit_button("❌ Anuluj")
+
+                                        if saved:
+                                            try:
+                                                update_payload = {
+                                                    "serwis_firma": new_firma.strip(),
+                                                    "rodzaj_naprawy": new_rodzaj,
+                                                    "koszt_naprawy": new_koszt,
+                                                    "uwagi_serwisowe": new_uwagi.strip(),
+                                                }
+                                                supabase.table("serwis").update(update_payload).eq("id", entry_id).execute()
+                                                st.session_state[edit_key] = False
+                                                st.success("Zaktualizowano zgłoszenie pomyślnie!")
+                                                st.rerun()
+                                            except Exception as err:
+                                                st.error(f"Błąd podczas zapisu: {err}")
+
+                                        if canceled:
+                                            st.session_state[edit_key] = False
+                                            st.rerun()
                     else:
                         st.info("To urządzenie nie posiada jeszcze zarejestrowanych historii napraw.")
                 except Exception as err:

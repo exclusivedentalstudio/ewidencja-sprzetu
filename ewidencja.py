@@ -1,7 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
 import datetime
-import re
 
 # Konfiguracja strony - otwarty sidebar domyślnie
 st.set_page_config(
@@ -174,7 +173,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Połączenie z Supabase z keszowaniem zasobu
+# Połączenie z Supabase
 @st.cache_resource
 def init_supabase() -> Client:
     SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
@@ -434,7 +433,7 @@ else:
 
                                     st.success("Urządzenie pomyślnie wróciło z serwisu i odzyskało status 'Sprawny'!")
                                     st.rerun()
-                                me:
+                                except Exception as err:
                                     st.error(f"Błąd aktualizacji: {err}")
             else:
                 st.info("Brak urządzeń aktualnie przebywających w serwisie.")
@@ -448,7 +447,7 @@ else:
         response = supabase.table("sprzet").select("*").order("id", desc=False).execute()
         items = response.data
         if items:
-            # Tworzymy czytelną dla użytkownika tabelę z kolumną "Lp." (1, 2, 3...) i bez surowego "id" z bazy
+            # Tworzymy czytelną tabelę z kolumną "Lp." (1, 2, 3...) bez luki po usuwaniu
             display_list = []
             for idx, item in enumerate(items, 1):
                 row = {"Lp.": idx}

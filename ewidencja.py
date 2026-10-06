@@ -563,6 +563,21 @@ else:
                                 st.write(f"**Data powrotu z serwisu:** {entry.get('data_powrotu') or 'Sprzęt wciąż w serwisie'}")
                                 st.write(f"**Koszt naprawy:** {entry.get('koszt_naprawy') or 0} PLN")
                                 st.write(f"**Opis / Uwagi:** {entry.get('uwagi_serwisowe') or 'Brak'}")
+                                
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                # PRZYCISK USUWANIA DANEGO ZGŁOSZENIA
+                                if st.button("🗑️ Usuń to zgłoszenie", key=f"del_serv_{entry['id']}"):
+                                    try:
+                                        supabase.table("serwis").delete().eq("id", entry["id"]).execute()
+                                        
+                                        # Jeśli usuwane zgłoszenie miało status "W naprawie", przywracamy sprzęt do statusu "Sprawny"
+                                        if entry.get("status_serwisu") == "W naprawie":
+                                            supabase.table("sprzet").update({"status": "Sprawny"}).eq("id", dev_id).execute()
+                                            
+                                        st.success("Zgłoszenie serwisowe zostało usunięte!")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Błąd podczas usuwania zgłoszenia: {err}")
                     else:
                         st.info("To urządzenie nie posiada jeszcze zarejestrowanych historii napraw.")
                 except Exception as err:

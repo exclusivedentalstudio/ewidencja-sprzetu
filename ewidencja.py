@@ -321,13 +321,4 @@ else:
             czy_gwarancja = st.checkbox("Sprzęt objęty gwarancją", value=True)
             gwarancja_do = ""
             if czy_gwarancja:
-                gwarancja_do = st.text_input("Gwarancja ważna do (RRRR-MM-DD)", value=default_guarantee_str)
-
-            status = st.selectbox("Status sprzętu", ["Sprawny", "W serwisie", "Wymaga przeglądu", "Wycofany"])
-
-        uwagi = st.text_area("Uwagi / Opis", height=80)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Zapisz w bazie sprzętu", type="primary"):
-            if not nazwa or nazwa.strip() == "":
-                st.warning("Nazwa sprzętu jest wymagana.")
+                gwarancja_do = st.text_input("Gwarancja ważna do (RR

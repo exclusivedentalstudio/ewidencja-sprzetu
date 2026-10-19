@@ -155,31 +155,4 @@ st.markdown("""
     .stButton>button {
         font-family: 'Outfit', sans-serif !important;
         background: #c5a880 !important;
-        color: #000000 !important;
-        border: none !important;
-        border-radius: 4px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        font-size: 0.85rem !important;
-        padding: 10px 16px !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton>button:hover {
-        background: #d1b58d !important;
-        color: #000000 !important;
-        box-shadow: 0 4px 15px rgba(197, 168, 128, 0.2);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Połączenie z Supabase
-@st.cache_resource
-def init_supabase() -> Client:
-    SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
-    raw_key = st.secrets["SUPABASE_KEY"]
-    SUPABASE_KEY = "".join(raw_key.split())
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-try:
-    supabase = init_supabase()
+        color: #0000
